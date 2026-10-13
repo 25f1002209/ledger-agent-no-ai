@@ -182,6 +182,7 @@ def parse_question(question):
         "customer": None,
         "group_by": None,
         "operation": "sum",
+        "paid_only": bool(re.search(r"\\bpaid\\b", q)),
     }
 
     if re.search(r"\b(refunds?|refunded|money returned)\b", q):
@@ -317,7 +318,9 @@ def matches_order(row, parsed):
     if parsed["customer"] and norm(row.get("customer")) != norm(parsed["customer"]):
         return False
 
-    if parsed["metric"] == "revenue" and norm(row.get("status")) != "paid":
+    # Revenue questions inherently mean paid sales; explicit "paid orders only"
+    # also constrains customer/product/order counts.
+    if (parsed["metric"] == "revenue" or parsed.get("paid_only")) and norm(row.get("status")) != "paid":
         return False
     if parsed["metric"] == "refunds" and norm(row.get("status")) != "refunded":
         return False
