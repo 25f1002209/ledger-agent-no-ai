@@ -248,11 +248,22 @@ def parse_question(question):
 
     if re.search(r"\b(average|mean)\b", q):
         parsed["operation"] = "average"
-    if re.search(r"\b(top|highest|largest|best)\b", q):
+    # Ranking/superlative questions need grouped calculations. Include "most".
+    if re.search(r"\b(top|highest|largest|best|most|greatest|leading)\b", q):
         parsed["operation"] = "top"
         for group_name in ("product", "customer", "region"):
             if re.search(rf"\b{group_name}s?\b", q):
                 parsed["group_by"] = group_name
+                break
+
+    # "Which product earned the most..." implies grouping even without "by product".
+    if re.search(r"\b(which|what)\b", q) and re.search(
+        r"\b(most|highest|largest|greatest|best)\b", q
+    ):
+        for group_name in ("product", "customer", "region"):
+            if re.search(rf"\b{group_name}s?\b", q):
+                parsed["group_by"] = group_name
+                parsed["operation"] = "top"
                 break
 
     return parsed
@@ -375,7 +386,13 @@ def answer_question(question, orders, rates):
 
         result = {key: money(amount) for key, amount in sorted(totals.items())}
         if parsed["operation"] == "top":
-            return dict(sorted(result.items(), key=lambda item: item[1], reverse=True)[:10])
+            ranked = sorted(result.items(), key=lambda item: item[1], reverse=True)
+            # "Which product/customer/region..." expects the winning name.
+            if re.search(r"\\b(which|what)\\b", question.lower()) and parsed["group_by"] in (
+                "product", "customer", "region"
+            ):
+                return ranked[0][0] if ranked else None
+            return dict(ranked[:10])
         return result
 
     amounts = [usd_amount(row, rates) for row in selected]
