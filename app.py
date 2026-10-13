@@ -388,7 +388,7 @@ def answer_question(question, orders, rates):
         if parsed["operation"] == "top":
             ranked = sorted(result.items(), key=lambda item: item[1], reverse=True)
             # "Which product/customer/region..." expects the winning name.
-            if re.search(r"\\b(which|what)\\b", question.lower()) and parsed["group_by"] in (
+            if re.search(r"\b(which|what)\b", question.lower()) and parsed["group_by"] in (
                 "product", "customer", "region"
             ):
                 return ranked[0][0] if ranked else None
